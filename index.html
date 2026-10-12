@@ -3,55 +3,104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ứng Dụng Nhắn Tin Nhóm</title>
+    <title>Chat Nhóm Bảo Mật - Zalo Style</title>
+    <!-- Thư viện Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
-        body { background-color: #e5ddd5; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .container { width: 100%; max-width: 480px; height: 100%; background: #fff; display: flex; flex-direction: column; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #efeef4; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .app-container { width: 100%; max-width: 480px; height: 100%; background: #fff; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.1); position: relative; overflow: hidden; }
         .hidden { display: none !important; }
-        
-        /* Màn hình đăng nhập */
-        #login-screen { padding: 40px 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; }
-        #login-screen h2 { color: #0084ff; margin-bottom: 20px; }
-        #login-screen input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
-        #login-screen button { width: 100%; padding: 12px; background: #0084ff; border: none; color: white; font-size: 16px; border-radius: 6px; cursor: pointer; }
 
-        /* Màn hình Chat */
+        /* Khung chung cho màn hình Xác thực */
+        .auth-screen { padding: 40px 24px; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; background: #f8f9fa; }
+        .auth-screen h2 { color: #0068ff; margin-bottom: 24px; font-size: 24px; }
+        .auth-screen input { width: 100%; padding: 14px; margin-bottom: 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; outline: none; transition: 0.2s; }
+        .auth-screen input:focus { border-color: #0068ff; }
+        .auth-screen button { width: 100%; padding: 14px; background: #0068ff; border: none; color: white; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 6px; }
+        .auth-screen button:hover { background: #0052cc; }
+        .switch-auth { margin-top: 16px; font-size: 14px; color: #555; cursor: pointer; }
+        .switch-auth span { color: #0068ff; font-weight: bold; }
+
+        /* Màn hình sảnh/quản lý nhóm */
+        #lobby-screen { display: flex; flex-direction: column; height: 100%; background: #fff; }
+        .lobby-header { background: #0068ff; color: white; padding: 16px; font-weight: bold; font-size: 18px; display: flex; justify-content: space-between; align-items: center; }
+        .lobby-content { padding: 20px; flex: 1; overflow-y: auto; }
+        .section-box { background: #f8f9fa; border: 1px solid #e1e4e8; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+        .section-box h3 { font-size: 16px; color: #333; margin-bottom: 10px; }
+        .section-box input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 6px; }
+        .section-box button { background: #28a745; color: white; border: none; padding: 10px; width: 100%; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .room-item { padding: 12px; background: white; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.2s; }
+        .room-item:hover { background: #f1f5f9; border-color: #0068ff; }
+
+        /* Màn hình Chat chính */
         #chat-screen { display: flex; flex-direction: column; height: 100%; }
-        .chat-header { background: #0084ff; color: white; padding: 15px; font-weight: bold; font-size: 18px; display: flex; justify-content: space-between; align-items: center; }
-        .chat-messages { flex: 1; padding: 15px; overflow-y: auto; background: #f0f2f5; display: flex; flex-direction: column; gap: 10px; }
+        .chat-header { background: #0068ff; color: white; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; }
+        .back-btn { background: none; border: none; color: white; font-size: 16px; cursor: pointer; font-weight: bold; }
+        .chat-messages { flex: 1; padding: 15px; overflow-y: auto; background: #efeef4; display: flex; flex-direction: column; gap: 8px; }
         .message { max-width: 75%; padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.4; word-wrap: break-word; }
-        .message.incoming { background: #fff; align-self: flex-start; border: 1px solid #ddd; }
-        .message.outgoing { background: #0084ff; color: white; align-self: flex-end; }
-        .message .sender { font-size: 11px; font-weight: bold; margin-bottom: 3px; opacity: 0.8; }
+        .message.incoming { background: #fff; align-self: flex-start; border: 1px solid #e1e4e8; }
+        .message.outgoing { background: #0068ff; color: white; align-self: flex-end; }
+        .message .sender { font-size: 11px; font-weight: bold; margin-bottom: 3px; color: #666; }
+        .message.outgoing .sender { color: #d0e1fd; }
         
-        .chat-input { display: flex; padding: 10px; background: #fff; border-top: 1px solid #ddd; }
-        .chat-input input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 20px; outline: none; font-size: 14px; }
-        .chat-input button { background: #0084ff; color: white; border: none; padding: 10px 20px; margin-left: 8px; border-radius: 20px; cursor: pointer; font-weight: bold; }
+        .chat-input { display: flex; padding: 10px; background: #fff; border-top: 1px solid #ddd; align-items: center; }
+        .chat-input input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 20px; outline: none; font-size: 14px; }
+        .chat-input button { background: #0068ff; color: white; border: none; padding: 10px 18px; margin-left: 8px; border-radius: 20px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <!-- Màn hình Đăng nhập -->
-        <div id="login-screen">
-            <h2>Đăng Nhập Nhóm Chat</h2>
-            <input type="text" id="username" placeholder="Nhập tên đăng nhập của bạn...">
-            <input type="password" id="password" placeholder="Nhập mật khẩu...">
-            <button onclick="login()">Vào Nhóm</button>
+    <div class="app-container">
+        <!-- 1. MÀN HÌNH ĐĂNG NHẬP -->
+        <div id="login-screen" class="auth-screen">
+            <h2>Đăng Nhập Z-Chat</h2>
+            <input type="text" id="login-user" placeholder="Tên đăng nhập">
+            <input type="password" id="login-pass" placeholder="Mật khẩu">
+            <button onclick="handleLogin()">Đăng Nhập</button>
+            <div class="switch-auth" onclick="switchScreen('register')">Chưa có tài khoản? <span>Đăng ký ngay</span></div>
         </div>
 
-        <!-- Màn hình Chat chính -->
+        <!-- 2. MÀN HÌNH ĐĂNG KÝ -->
+        <div id="register-screen" class="auth-screen hidden">
+            <h2>Tạo Tài Khoản</h2>
+            <input type="text" id="reg-user" placeholder="Chọn tên đăng nhập">
+            <input type="password" id="reg-pass" placeholder="Mật khẩu bảo mật">
+            <button onclick="handleRegister()">Đăng Ký</button>
+            <div class="switch-auth" onclick="switchScreen('login')">Đã có tài khoản? <span>Đăng nhập</span></div>
+        </div>
+
+        <!-- 3. MÀN HÌNH SẢNH CHỜ (TẠO / CHỌN NHÓM) -->
+        <div id="lobby-screen" class="hidden">
+            <div class="lobby-header">
+                <span id="lobby-welcome">Xin chào</span>
+                <button onclick="logout()" style="background:#ff4d4d; border:none; color:white; padding:6px 12px; border-radius:4px; cursor:pointer;">Đăng xuất</button>
+            </div>
+            <div class="lobby-content">
+                <div class="section-box">
+                    <h3>Tạo Nhóm Chat Mới</h3>
+                    <input type="text" id="new-room-name" placeholder="Tên nhóm / Tên lớp học">
+                    <input type="password" id="new-room-pass" placeholder="Mật khẩu bảo vệ nhóm">
+                    <button onclick="createRoom()">Tạo Nhóm Ngay</button>
+                </div>
+
+                <h3>Danh Sách Nhóm Công Khai</h3>
+                <div id="room-list">
+                    <!-- Danh sách nhóm tải động từ database -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. MÀN HÌNH PHÒNG CHAT CHÍNH -->
         <div id="chat-screen" class="hidden">
             <div class="chat-header">
-                <span id="room-title">Phòng Chat Nhóm Lớp</span>
-                <span id="user-display" style="font-size: 13px; font-weight: normal;"></span>
+                <button class="back-btn" onclick="leaveRoom()">❮ Rời nhóm</button>
+                <span id="current-room-title" style="font-weight: bold;">Tên Nhóm</span>
+                <span style="width: 50px;"></span>
             </div>
             <div class="chat-messages" id="messages-container">
-                <div class="message incoming">
-                    <div class="sender">Hệ thống</div>
-                    Chào mừng bạn đến với phòng chat nhóm! Hãy bắt đầu trò chuyện.
-                </div>
+                <!-- Tin nhắn hiển thị ở đây -->
             </div>
             <div class="chat-input">
                 <input type="text" id="message-input" placeholder="Nhập tin nhắn..." onkeypress="handleKeyPress(event)">
@@ -61,39 +110,165 @@
     </div>
 
     <script>
-        let currentUser = "";
+        // Cấu hình Firebase miễn phí mẫu (Bạn có thể thay bằng cơ sở dữ liệu riêng của bạn sau này)
+        const firebaseConfig = {
+            databaseURL: "https://webchat-demo-default-rtdb.firebaseio.com/" 
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-        function login() {
-            const user = document.getElementById('username').value.trim();
-            const pass = document.getElementById('password').value.trim();
+        let currentUser = null;
+        let currentRoomId = null;
+        let currentRoomName = null;
 
-            if (!user || !pass) {
-                alert("Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu!");
-                return;
-            }
-
-            currentUser = user;
-            document.getElementById('user-display').innerText = "Tài khoản: " + currentUser;
+        function switchScreen(screen) {
             document.getElementById('login-screen').classList.add('hidden');
-            document.getElementById('chat-screen').classList.remove('hidden');
+            document.getElementById('register-screen').classList.add('hidden');
+            document.getElementById('lobby-screen').classList.add('hidden');
+            document.getElementById('chat-screen').classList.add('hidden');
+
+            if (screen === 'login') document.getElementById('login-screen').classList.remove('hidden');
+            if (screen === 'register') document.getElementById('register-screen').classList.remove('hidden');
+            if (screen === 'lobby') document.getElementById('lobby-screen').classList.remove('hidden');
+            if (screen === 'chat') document.getElementById('chat-screen').classList.remove('hidden');
         }
 
+        // Xử lý Đăng ký
+        function handleRegister() {
+            const user = document.getElementById('reg-user').value.trim();
+            const pass = document.getElementById('reg-pass').value.trim();
+            if(!user || !pass) { alert("Vui lòng điền đầy đủ thông tin!"); return; }
+
+            db.ref('users/' + user).once('snapshot', (snapshot) => {
+                if(snapshot.exists()) {
+                    alert("Tên đăng nhập này đã tồn tại!");
+                } else {
+                    db.ref('users/' + user).set({ password: pass });
+                    alert("Đăng ký thành công! Hãy đăng nhập.");
+                    switchScreen('login');
+                }
+            });
+        }
+
+        // Xử lý Đăng nhập
+        function handleLogin() {
+            const user = document.getElementById('login-user').value.trim();
+            const pass = document.getElementById('login-pass').value.trim();
+            if(!user || !pass) { alert("Vui lòng nhập tài khoản và mật khẩu!"); return; }
+
+            db.ref('users/' + user).once('value', (snapshot) => {
+                if(snapshot.exists() && snapshot.val().password === pass) {
+                    currentUser = user;
+                    document.getElementById('lobby-welcome').innerText = "Tài khoản: " + currentUser;
+                    switchScreen('lobby');
+                    loadRooms();
+                } else {
+                    alert("Sai tên đăng nhập hoặc mật khẩu!");
+                }
+            });
+        }
+
+        function logout() {
+            currentUser = null;
+            switchScreen('login');
+        }
+
+        // Tạo phòng chat có mật khẩu
+        function createRoom() {
+            const roomName = document.getElementById('new-room-name').value.trim();
+            const roomPass = document.getElementById('new-room-pass').value.trim();
+            if(!roomName || !roomPass) { alert("Vui lòng nhập tên nhóm và mật khẩu nhóm!"); return; }
+
+            const roomId = 'room_' + Date.now();
+            db.ref('rooms/' + roomId).set({
+                name: roomName,
+                password: roomPass,
+                creator: currentUser
+            });
+
+            document.getElementById('new-room-name').value = '';
+            document.getElementById('new-room-pass').value = '';
+            alert("Tạo nhóm thành công!");
+        }
+
+        // Tải danh sách phòng chat
+        function loadRooms() {
+            const roomListDiv = document.getElementById('room-list');
+            db.ref('rooms').on('value', (snapshot) => {
+                roomListDiv.innerHTML = '';
+                if(!snapshot.exists()) {
+                    roomListDiv.innerHTML = '<p style="color:#777; font-size:14px;">Chưa có nhóm nào được tạo.</p>';
+                    return;
+                }
+                snapshot.forEach((childSnapshot) => {
+                    const roomId = childSnapshot.key;
+                    const roomData = childSnapshot.val();
+                    
+                    const item = document.createElement('div');
+                    item.className = 'room-item';
+                    item.innerHTML = `<span>🔒 <b>${roomData.name}</b></span> <span style="font-size:12px; color:#0068ff;">Vào nhóm ➔</span>`;
+                    item.onclick = () => joinRoom(roomId, roomData.name, roomData.password);
+                    roomListDiv.appendChild(item);
+                });
+            });
+        }
+
+        // Vào phòng chat (Yêu cầu nhập mật khẩu nhóm)
+        function joinRoom(roomId, roomName, roomPass) {
+            const passInput = prompt(`Nhập mật khẩu để vào nhóm "${roomName}":`);
+            if(passInput === null) return;
+
+            if(passInput === roomPass) {
+                currentRoomId = roomId;
+                currentRoomName = roomName;
+                document.getElementById('current-room-title').innerText = roomName;
+                switchScreen('chat');
+                listenMessages();
+            } else {
+                alert("Mật khẩu nhóm không chính xác!");
+            }
+        }
+
+        function leaveRoom() {
+            currentRoomId = null;
+            switchScreen('lobby');
+        }
+
+        // Gửi tin nhắn trong nhóm
         function sendMessage() {
             const input = document.getElementById('message-input');
             const text = input.value.trim();
+            if(!text || !currentRoomId) return;
 
-            if (!text) return;
+            db.ref('messages/' + currentRoomId).push({
+                sender: currentUser,
+                text: text,
+                time: Date.now()
+            });
 
+            input.value = '';
+        }
+
+        // Lắng nghe tin nhắn real-time
+        function listenMessages() {
             const container = document.getElementById('messages-container');
-            
-            // Tạo khung tin nhắn của chính mình
-            const msgDiv = document.createElement('div');
-            msgDiv.className = 'message outgoing';
-            msgDiv.innerHTML = `<div class="sender">Bạn (${currentUser})</div>${text}`;
-            container.appendChild(msgDiv);
-
-            input.value = "";
-            container.scrollTop = container.scrollHeight;
+            db.ref('messages/' + currentRoomId).on('value', (snapshot) => {
+                container.innerHTML = '';
+                if(!snapshot.exists()) {
+                    container.innerHTML = '<div style="text-align:center; color:#777; font-size:13px; margin-top:20px;">Chưa có tin nhắn nào trong nhóm.</div>';
+                    return;
+                }
+                snapshot.forEach((childSnapshot) => {
+                    const msg = childSnapshot.val();
+                    const msgDiv = document.createElement('div');
+                    const isMe = msg.sender === currentUser;
+                    
+                    msgDiv.className = 'message ' + (isMe ? 'outgoing' : 'incoming');
+                    msgDiv.innerHTML = `<div class="sender">${msg.sender}</div>${msg.text}`;
+                    container.appendChild(msgDiv);
+                });
+                container.scrollTop = container.scrollHeight;
+            });
         }
 
         function handleKeyPress(event) {
