@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ứng Dụng Nhắn Tin Nhóm</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        body { background-color: #e5ddd5; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .container { width: 100%; max-width: 480px; height: 100%; background: #fff; display: flex; flex-direction: column; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .hidden { display: none !important; }
+        
+        /* Màn hình đăng nhập */
+        #login-screen { padding: 40px 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; }
+        #login-screen h2 { color: #0084ff; margin-bottom: 20px; }
+        #login-screen input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
+        #login-screen button { width: 100%; padding: 12px; background: #0084ff; border: none; color: white; font-size: 16px; border-radius: 6px; cursor: pointer; }
+
+        /* Màn hình Chat */
+        #chat-screen { display: flex; flex-direction: column; height: 100%; }
+        .chat-header { background: #0084ff; color: white; padding: 15px; font-weight: bold; font-size: 18px; display: flex; justify-content: space-between; align-items: center; }
+        .chat-messages { flex: 1; padding: 15px; overflow-y: auto; background: #f0f2f5; display: flex; flex-direction: column; gap: 10px; }
+        .message { max-width: 75%; padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.4; word-wrap: break-word; }
+        .message.incoming { background: #fff; align-self: flex-start; border: 1px solid #ddd; }
+        .message.outgoing { background: #0084ff; color: white; align-self: flex-end; }
+        .message .sender { font-size: 11px; font-weight: bold; margin-bottom: 3px; opacity: 0.8; }
+        
+        .chat-input { display: flex; padding: 10px; background: #fff; border-top: 1px solid #ddd; }
+        .chat-input input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 20px; outline: none; font-size: 14px; }
+        .chat-input button { background: #0084ff; color: white; border: none; padding: 10px 20px; margin-left: 8px; border-radius: 20px; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Màn hình Đăng nhập -->
+        <div id="login-screen">
+            <h2>Đăng Nhập Nhóm Chat</h2>
+            <input type="text" id="username" placeholder="Nhập tên đăng nhập của bạn...">
+            <input type="password" id="password" placeholder="Nhập mật khẩu...">
+            <button onclick="login()">Vào Nhóm</button>
+        </div>
+
+        <!-- Màn hình Chat chính -->
+        <div id="chat-screen" class="hidden">
+            <div class="chat-header">
+                <span id="room-title">Phòng Chat Nhóm Lớp</span>
+                <span id="user-display" style="font-size: 13px; font-weight: normal;"></span>
+            </div>
+            <div class="chat-messages" id="messages-container">
+                <div class="message incoming">
+                    <div class="sender">Hệ thống</div>
+                    Chào mừng bạn đến với phòng chat nhóm! Hãy bắt đầu trò chuyện.
+                </div>
+            </div>
+            <div class="chat-input">
+                <input type="text" id="message-input" placeholder="Nhập tin nhắn..." onkeypress="handleKeyPress(event)">
+                <button onclick="sendMessage()">Gửi</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = "";
+
+        function login() {
+            const user = document.getElementById('username').value.trim();
+            const pass = document.getElementById('password').value.trim();
+
+            if (!user || !pass) {
+                alert("Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu!");
+                return;
+            }
+
+            currentUser = user;
+            document.getElementById('user-display').innerText = "Tài khoản: " + currentUser;
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('chat-screen').classList.remove('hidden');
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('message-input');
+            const text = input.value.trim();
+
+            if (!text) return;
+
+            const container = document.getElementById('messages-container');
+            
+            // Tạo khung tin nhắn của chính mình
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message outgoing';
+            msgDiv.innerHTML = `<div class="sender">Bạn (${currentUser})</div>${text}`;
+            container.appendChild(msgDiv);
+
+            input.value = "";
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+    </script>
+</body>
+</html>
